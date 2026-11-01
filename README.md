@@ -93,7 +93,14 @@ node --check index.js
 node test/smoke.mjs
 ```
 
-安装：把本目录作为 bundle 装进当前 profile（`install_bundle`，target 为本目录绝对路径）。
+## 安装
+
+仓库：<https://github.com/leerogerstheman/dsh-conversation-message>（latest tag `v0.1.0`）
+
+- 本地目录：把本目录作为 bundle 装进当前 profile（`install_bundle`，target 为本目录绝对路径）。
+- 直接从 GitHub：在 profile 的 `package.json` 依赖里加
+  `"dsh-conversation-message": "git+https://github.com/leerogerstheman/dsh-conversation-message.git#v0.1.0"`
+  （与 dsh-prompt-inject 同一种装法），装好后在插件页启用。
 
 ## 参考
 
