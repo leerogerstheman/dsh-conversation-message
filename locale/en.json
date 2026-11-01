@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Cross-Conversation Messages",
+    "description": "Let one conversation discover and message other conversations: peer discovery, delivery into the target's next turn, honest receipts, and a per-target send guard."
+  }
+}

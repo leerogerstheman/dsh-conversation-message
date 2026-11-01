@@ -1,0 +1,5 @@
+# 对话间消息：把 Host 插件插进当前 profile。
+- insert:
+    - id: conversation-message
+      name: 'dsh-conversation-message'
+      config: {}

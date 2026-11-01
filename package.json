@@ -1,0 +1,43 @@
+{
+  "name": "dsh-conversation-message",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "对话间消息：让一个对话发现并给其他对话发消息（Qoder CLI cross-session messaging 风格）",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "README.md",
+    "locale/*.json",
+    "icon.svg",
+    "vendor/*",
+    "test/*.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "check": "node --check index.js",
+    "test": "node test/smoke.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "session",
+    "conversation",
+    "messaging"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}
