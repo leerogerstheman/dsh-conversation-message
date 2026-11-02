@@ -413,23 +413,78 @@ function commitSend(state, senderId, targetId, next) {
 }
 
 /**
- * 把一段文本投进目标对话的下一轮。
+ * 递归冻结，对齐 `createUserMessage` 的 deepFreeze(structuredClone(...)) 语义。
+ * @param value - 待冻结的值。
+ * @returns 同一个（已冻结的）值。
+ */
+function deepFreeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value)
+    for (const key of Object.keys(value)) deepFreeze(value[key])
+  }
+  return value
+}
+
+/**
+ * 组装一条「对话间消息」的 user 角色消息。
+ *
+ * `source` 用的是 DSH 内置的**转述**形态（`kind: 'agent-message'` + `form: 'relay'` +
+ * `senderSessionId`），和 Agent Teams / 子代理回传消息同一种：Web 端把它渲染成一条
+ * 「来自会话 xxx」的上下文行，而不是用户自己打的字。
+ * @param input - 正文与发送方 session id。
+ * @returns 冻结的 user 消息。
+ */
+export function createConversationMessage(input) {
+  return deepFreeze({
+    id: randomUUID(),
+    role: 'user',
+    content: [{ type: 'text', text: String(input?.text ?? '') }],
+    source: {
+      kind: 'agent-message',
+      form: 'relay',
+      senderSessionId: String(input?.senderId ?? ''),
+    },
+  })
+}
+
+/**
+ * 把一条消息投进目标对话的下一轮。
+ *
+ * 优先走 `sessionController.resolveAgent()`（活着的直接拿、冷会话按需恢复）再
+ * `agent.followup()`：这样能自己决定消息的 `source`，UI 才会渲染成转述行。
+ * 部署里没有 resolveAgent 时退回 `prompt()`（source 只能是 user，UI 看起来像用户发言）。
  * @param ctx - Host 上下文。
  * @param targetId - 目标 session id。
- * @param text - 消息正文。
+ * @param message - createConversationMessage() 的产物。
  * @param signal - 取消信号。
  */
-async function deliverPrompt(ctx, targetId, text, signal) {
+async function deliverMessage(ctx, targetId, message, signal) {
   const controller = serviceOf(ctx, 'sessionController')
-  if (!controller || typeof controller.prompt !== 'function') {
-    throw new Error('这个部署没有提供 sessionController，无法投递对话间消息。')
+  if (!controller) throw new Error('这个部署没有提供 sessionController，无法投递对话间消息。')
+  signal?.throwIfAborted?.()
+
+  if (typeof controller.resolveAgent === 'function') {
+    const resolved = await controller.resolveAgent(targetId)
+    if (resolved && resolved.error !== undefined) throw resolved.error
+    const agent = resolved?.agent
+    if (!agent || typeof agent.followup !== 'function') {
+      throw new Error(`对话 ${targetId} 没有可用的 agent，消息没有送达。`)
+    }
+    agent.followup(message)
+    return
   }
-  await controller.prompt({
-    requestId: randomUUID(),
-    sessionId: targetId,
-    mode: 'queue',
-    content: [{ type: 'text', text }],
-  }, signal ?? new AbortController().signal)
+
+  if (typeof controller.prompt === 'function') {
+    await controller.prompt({
+      requestId: message.id,
+      sessionId: targetId,
+      mode: 'queue',
+      content: message.content,
+    }, signal ?? new AbortController().signal)
+    return
+  }
+
+  throw new Error('这个部署的 sessionController 既没有 resolveAgent 也没有 prompt，无法投递对话间消息。')
 }
 
 /** 把投递失败的 RemoteError 翻译成人话。 */
@@ -592,8 +647,9 @@ function createTools(deps) {
         now: Date.now(),
       })
 
+      const message = createConversationMessage({ text, senderId: String(me.id) })
       try {
-        await deliverPrompt(ctx, target.id, text, exec?.signal)
+        await deliverMessage(ctx, target.id, message, exec?.signal)
       } catch (error) {
         if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') throw error
         throw new Error(describeDeliveryError(error, target))

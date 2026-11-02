@@ -1,6 +1,6 @@
 {
   "name": "dsh-conversation-message",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "对话间消息：让一个对话发现并给其他对话发消息（Qoder CLI cross-session messaging 风格）",
   "main": "index.js",
